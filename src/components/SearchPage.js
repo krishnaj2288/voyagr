@@ -6,11 +6,46 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const DAYS_SHORT = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
 const TRENDING = [
-  { city: 'Tokyo', country: 'Japan', code: 'NRT', price: '$842', icon: '🗾', gradient: 'linear-gradient(135deg, #1a3a2a 0%, #0d1a12 100%)' },
-  { city: 'Paris', country: 'France', code: 'CDG', price: '$610', icon: '🗼', gradient: 'linear-gradient(135deg, #1e1a2e 0%, #0d0a18 100%)' },
-  { city: 'Dubai', country: 'UAE', code: 'DXB', price: '$720', icon: '🏙️', gradient: 'linear-gradient(135deg, #2a1e0a 0%, #150f05 100%)' },
-  { city: 'Singapore', country: 'Singapore', code: 'SIN', price: '$890', icon: '🦁', gradient: 'linear-gradient(135deg, #0a1e2a 0%, #050f15 100%)' },
-  { city: 'London', country: 'UK', code: 'LHR', price: '$480', icon: '🎡', gradient: 'linear-gradient(135deg, #1a1a2e 0%, #0a0a18 100%)' },
+  {
+    city: 'Paris', country: 'France', code: 'CDG', price: '$610',
+    image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=900&q=80',
+    gradient: 'linear-gradient(135deg, #1e1a2e 0%, #0d0a18 100%)',
+    attractions: ['Eiffel Tower', 'Louvre Museum', 'Montmartre', 'Palace of Versailles'],
+    bestTime: 'Apr – Jun · Sep – Oct', visitors: '44M', rank: '#1',
+    lat: 48.8566, lon: 2.3522,
+  },
+  {
+    city: 'Tokyo', country: 'Japan', code: 'NRT', price: '$842',
+    image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=700&q=80',
+    gradient: 'linear-gradient(135deg, #1a3a2a 0%, #0d1a12 100%)',
+    attractions: ['Shibuya Crossing', 'Senso-ji Temple', 'Shinjuku Gyoen', 'teamLab Planets'],
+    bestTime: 'Mar – May · Oct – Nov', visitors: '31M', rank: '#2',
+    lat: 35.6762, lon: 139.6503,
+  },
+  {
+    city: 'Dubai', country: 'UAE', code: 'DXB', price: '$720',
+    image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=700&q=80',
+    gradient: 'linear-gradient(135deg, #2a1e0a 0%, #150f05 100%)',
+    attractions: ['Burj Khalifa', 'Dubai Mall', 'Palm Jumeirah', 'Desert Safari'],
+    bestTime: 'Nov – Mar', visitors: '16M', rank: '#3',
+    lat: 25.2048, lon: 55.2708,
+  },
+  {
+    city: 'London', country: 'United Kingdom', code: 'LHR', price: '$480',
+    image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=700&q=80',
+    gradient: 'linear-gradient(135deg, #1a1a2e 0%, #0a0a18 100%)',
+    attractions: ['Tower of London', 'British Museum', 'Buckingham Palace', 'Borough Market'],
+    bestTime: 'May – Sep', visitors: '21M', rank: '#4',
+    lat: 51.5074, lon: -0.1278,
+  },
+  {
+    city: 'Singapore', country: 'Singapore', code: 'SIN', price: '$890',
+    image: 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=700&q=80',
+    gradient: 'linear-gradient(135deg, #0a1e2a 0%, #050f15 100%)',
+    attractions: ['Marina Bay Sands', 'Gardens by the Bay', 'Sentosa Island', 'Hawker Centres'],
+    bestTime: 'Feb – Apr', visitors: '19M', rank: '#5',
+    lat: 1.3521, lon: 103.8198,
+  },
 ];
 
 const WMO_MAP = {
@@ -60,6 +95,7 @@ export default function SearchPage({ onSearch }) {
   const source = mode === 'train' ? STATIONS : AIRPORTS;
   const [errors, setErrors] = useState({});
   const [toast, setToast] = useState(null);
+  const [destModal, setDestModal] = useState(null);
   const panelRef = useRef(null);
 
   // ── WEATHER STATE ──
@@ -248,8 +284,13 @@ export default function SearchPage({ onSearch }) {
   };
 
   const handleTrendingClick = (t) => {
+    setDestModal(t);
+  };
+
+  const handleSearchFromDest = (t) => {
     const airport = AIRPORTS.find(a => a.code === t.code);
     if (airport) { setDest(airport); setDestInput(airport.city); }
+    setDestModal(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -559,13 +600,31 @@ export default function SearchPage({ onSearch }) {
         </div>
         <div className="sp-dest-grid">
           {TRENDING.map((t, i) => (
-            <div key={t.city} className={`dest-card ${i === 0 ? 'dest-featured' : ''}`} style={{ background: t.gradient }} onClick={() => handleTrendingClick(t)}>
-              <div className="dest-pattern">{t.icon}</div>
+            <div
+              key={t.city}
+              className={`dest-card ${i === 0 ? 'dest-featured' : ''}`}
+              style={{ background: t.gradient }}
+              onClick={() => handleTrendingClick(t)}
+            >
+              <img src={t.image} alt={t.city} className="dest-img" loading="lazy" />
               <div className="dest-overlay" />
               <div className="dest-content">
+                <div className="dest-top-row">
+                  <span className="dest-rank">{t.rank}</span>
+                  <span className="dest-visitors">{t.visitors} visitors/yr</span>
+                </div>
                 <div className="dest-country">{t.country}</div>
                 <div className="dest-city">{t.city}</div>
-                <div className="dest-price">From <span>{t.price}</span></div>
+                {i === 0 && <p className="dest-desc">{t.desc}</p>}
+                <div className="dest-attrs">
+                  {t.attractions.slice(0, i === 0 ? 4 : 2).map(a => (
+                    <span key={a} className="dest-attr">{a}</span>
+                  ))}
+                </div>
+                <div className="dest-footer-row">
+                  <span className="dest-best-time">✦ {t.bestTime}</span>
+                  <span className="dest-price">From <span>{t.price}</span></span>
+                </div>
               </div>
             </div>
           ))}
@@ -578,12 +637,139 @@ export default function SearchPage({ onSearch }) {
         <span className="sp-footer-copy">© 2026 Voyagr. All rights reserved.</span>
       </footer>
 
+      {/* ── DESTINATION MODAL ── */}
+      {destModal && (
+        <DestinationModal
+          dest={destModal}
+          onClose={() => setDestModal(null)}
+          onSearch={handleSearchFromDest}
+        />
+      )}
+
       {/* ── TOAST ── */}
       {toast && (
         <div className={`sp-toast ${toast.type}`}>
           {toast.type === 'error' ? '⚠' : '✓'} {toast.msg}
         </div>
       )}
+    </div>
+  );
+}
+
+function DestinationModal({ dest, onClose, onSearch }) {
+  const [wikiData, setWikiData] = useState(null);
+  const [destWeather, setDestWeather] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [wikiRes, wxRes] = await Promise.all([
+          fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(dest.city)}`),
+          fetch(`https://api.open-meteo.com/v1/forecast?latitude=${dest.lat}&longitude=${dest.lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=auto`),
+        ]);
+        const wiki = await wikiRes.json();
+        const wx = await wxRes.json();
+        setWikiData(wiki);
+        if (wx.current) setDestWeather({ temp: Math.round(wx.current.temperature_2m), code: wx.current.weather_code });
+      } catch {
+        // silently fail — static data still shows
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [dest]);
+
+  // Extract first 3 sentences from Wikipedia
+  const getSummary = (extract) => {
+    if (!extract) return '';
+    const sentences = extract.match(/[^.!?]+[.!?]+(\s|$)/g) || [];
+    return sentences.slice(0, 3).join('').trim();
+  };
+
+  return (
+    <div className="dm-overlay" onClick={onClose}>
+      <div className="dm-modal" onClick={e => e.stopPropagation()}>
+        <button className="dm-close" onClick={onClose}>×</button>
+
+        {/* Hero image */}
+        <div className="dm-hero">
+          <img src={dest.image} alt={dest.city} className="dm-hero-img" />
+          <div className="dm-hero-overlay" />
+          <div className="dm-hero-content">
+            <div className="dm-hero-top">
+              <span className="dm-rank">{dest.rank} Most Visited</span>
+              <span className="dm-visitors">{dest.visitors} visitors/yr</span>
+            </div>
+            <h2 className="dm-city">{dest.city}</h2>
+            <p className="dm-country">{dest.country}</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="dm-body">
+          {loading ? (
+            <div className="dm-loading">
+              {[100, 85, 70].map(w => (
+                <div key={w} className="skeleton" style={{ width: `${w}%`, height: 15, marginBottom: 10 }} />
+              ))}
+            </div>
+          ) : (
+            <>
+              {wikiData?.extract && (
+                <p className="dm-desc">{getSummary(wikiData.extract)}</p>
+              )}
+
+              {/* Live stats row */}
+              <div className="dm-stats-row">
+                {destWeather && (
+                  <div className="dm-stat-box">
+                    <div className="dm-stat-label">Now in {dest.city}</div>
+                    <div className="dm-stat-val">{destWeather.temp}°F {getWMO(destWeather.code).emoji}</div>
+                    <div className="dm-stat-sub">{getWMO(destWeather.code).label}</div>
+                  </div>
+                )}
+                <div className="dm-stat-box">
+                  <div className="dm-stat-label">Best Time to Visit</div>
+                  <div className="dm-stat-val">{dest.bestTime}</div>
+                </div>
+                <div className="dm-stat-box">
+                  <div className="dm-stat-label">Flights From</div>
+                  <div className="dm-stat-val" style={{ color: 'var(--gold)' }}>{dest.price}</div>
+                  <div className="dm-stat-sub">per person</div>
+                </div>
+              </div>
+
+              {/* Top attractions */}
+              <h4 className="dm-section-title">Top Attractions</h4>
+              <div className="dm-attractions">
+                {dest.attractions.map((a, i) => (
+                  <div key={a} className="dm-attr-card">
+                    <span className="dm-attr-num">{i + 1}</span>
+                    <span className="dm-attr-name">{a}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Footer CTA */}
+          <div className="dm-footer">
+            <button className="dm-cta" onClick={() => onSearch(dest)}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+              Search Flights to {dest.city}
+            </button>
+            {wikiData?.content_urls?.desktop?.page && (
+              <a href={wikiData.content_urls.desktop.page} target="_blank" rel="noopener noreferrer" className="dm-wiki-link">
+                Read more on Wikipedia →
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
