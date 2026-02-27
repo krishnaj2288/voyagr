@@ -137,8 +137,8 @@ export default function ResultsPage({ params, onBack }) {
           {!loading && (
             <div className="rp-price-summary">
               <div className="rp-ps-label">Prices from</div>
-              <div className="rp-ps-price">${Math.min(...filtered.map(f => f.price))}</div>
-              <div className="rp-ps-per">per person · {filtered.length} flights found</div>
+              <div className="rp-ps-price">{filtered.length ? `$${Math.min(...filtered.map(f => f.price))}` : '—'}</div>
+              <div className="rp-ps-per">per person · {filtered.length} {mode === 'train' ? 'trains' : 'flights'} found</div>
             </div>
           )}
         </aside>
@@ -196,8 +196,8 @@ export default function ResultsPage({ params, onBack }) {
 
           {!loading && filtered.length === 0 && (
             <div className="rp-empty">
-              <div className="rp-empty-icon">✈</div>
-              <h3>No flights found</h3>
+              <div className="rp-empty-icon">{mode === 'train' ? '🚂' : '✈'}</div>
+              <h3>No {mode === 'train' ? 'trains' : 'flights'} found</h3>
               <p>Try adjusting your filters or price range</p>
             </div>
           )}
@@ -354,7 +354,7 @@ function BookingModal({ flight, params, pax, onClose, onConfirm }) {
 function TrainCard({ train, pax, selected, onSelect, onBook, style }) {
   return (
     <div
-      className={`fc tc ${selected ? 'fc-selected' : ''}`}
+      className={`fc ${selected ? 'fc-selected' : ''}`}
       style={{ ...style, animation: 'fadeUp 0.5s ease both' }}
       onClick={onSelect}
     >
@@ -363,7 +363,7 @@ function TrainCard({ train, pax, selected, onSelect, onBook, style }) {
       <div className="fc-main">
         {/* Service */}
         <div className="fc-airline">
-          <div className="fc-airline-dot tc-dot" style={{ background: train.serviceColor }}>🚂</div>
+          <div className="fc-airline-dot" style={{ background: train.serviceColor }} />
           <div className="fc-airline-info">
             <span className="fc-airline-name">{train.service}</span>
             <span className="fc-flight-num">{train.trainNum}</span>
@@ -408,7 +408,7 @@ function TrainCard({ train, pax, selected, onSelect, onBook, style }) {
         </div>
         {pax > 1 && <div className="fc-price-total">${train.totalPrice} total</div>}
         <div className="fc-cabin-tag">{train.cabin}</div>
-        <button className="fc-book-btn tc-book-btn" onClick={(e) => { e.stopPropagation(); onBook(); }}>
+        <button className="fc-book-btn" onClick={(e) => { e.stopPropagation(); onBook(); }}>
           Select Train
         </button>
       </div>

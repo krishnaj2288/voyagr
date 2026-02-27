@@ -13,6 +13,34 @@ const TRENDING = [
   { city: 'London', country: 'UK', code: 'LHR', price: '$480', icon: '🎡', gradient: 'linear-gradient(135deg, #1a1a2e 0%, #0a0a18 100%)' },
 ];
 
+const WMO_MAP = {
+  0:  { label: 'Clear Sky',           emoji: '☀️'  },
+  1:  { label: 'Mainly Clear',        emoji: '🌤️' },
+  2:  { label: 'Partly Cloudy',       emoji: '⛅'  },
+  3:  { label: 'Overcast',            emoji: '☁️'  },
+  45: { label: 'Foggy',               emoji: '🌫️' },
+  48: { label: 'Icy Fog',             emoji: '🌫️' },
+  51: { label: 'Light Drizzle',       emoji: '🌦️' },
+  53: { label: 'Drizzle',             emoji: '🌦️' },
+  55: { label: 'Heavy Drizzle',       emoji: '🌧️' },
+  61: { label: 'Light Rain',          emoji: '🌧️' },
+  63: { label: 'Rain',                emoji: '🌧️' },
+  65: { label: 'Heavy Rain',          emoji: '🌧️' },
+  71: { label: 'Light Snow',          emoji: '🌨️' },
+  73: { label: 'Snow',                emoji: '❄️'  },
+  75: { label: 'Heavy Snow',          emoji: '❄️'  },
+  77: { label: 'Snow Grains',         emoji: '🌨️' },
+  80: { label: 'Light Showers',       emoji: '🌦️' },
+  81: { label: 'Showers',             emoji: '🌧️' },
+  82: { label: 'Heavy Showers',       emoji: '⛈️'  },
+  85: { label: 'Snow Showers',        emoji: '🌨️' },
+  86: { label: 'Heavy Snow Showers',  emoji: '❄️'  },
+  95: { label: 'Thunderstorm',        emoji: '⛈️'  },
+  96: { label: 'Thunderstorm',        emoji: '⛈️'  },
+  99: { label: 'Severe Thunderstorm', emoji: '🌩️' },
+};
+const getWMO = (code) => WMO_MAP[code] ?? { label: 'Unknown', emoji: '🌡️' };
+
 export default function SearchPage({ onSearch }) {
   const [mode, setMode] = useState('flight');
   const [tripType, setTripType] = useState('round');
@@ -33,6 +61,50 @@ export default function SearchPage({ onSearch }) {
   const [errors, setErrors] = useState({});
   const [toast, setToast] = useState(null);
   const panelRef = useRef(null);
+
+  // ── WEATHER STATE ──
+  const [weather, setWeather] = useState(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
+  const [weatherError, setWeatherError] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // ── CLOCK tick ──
+  useEffect(() => {
+    const id = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // ── GEOLOCATION + WEATHER fetch ──
+  useEffect(() => {
+    if (!navigator.geolocation) { setWeatherError(true); setWeatherLoading(false); return; }
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords: { latitude, longitude } }) => {
+        try {
+          const [geoRes, wxRes] = await Promise.all([
+            fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`),
+            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=auto`),
+          ]);
+          const geo = await geoRes.json();
+          const wx  = await wxRes.json();
+          const c   = wx.current;
+          setWeather({
+            city:    geo.city || geo.locality || geo.principalSubdivision || 'Your Location',
+            country: geo.countryName || '',
+            temp:    Math.round(c.temperature_2m),
+            humidity: c.relative_humidity_2m,
+            wind:    Math.round(c.wind_speed_10m),
+            code:    c.weather_code,
+          });
+        } catch {
+          setWeatherError(true);
+        } finally {
+          setWeatherLoading(false);
+        }
+      },
+      () => { setWeatherError(true); setWeatherLoading(false); },
+      { timeout: 8000 }
+    );
+  }, []);
 
   // Close on outside click
   useEffect(() => {
@@ -230,6 +302,14 @@ export default function SearchPage({ onSearch }) {
         <p className="sp-eyebrow">Premium Travel, Redefined</p>
         <h1 className="sp-title">Where Will <em>You Go</em><br/>Next?</h1>
         <p className="sp-subtitle">Seamless journeys crafted for the discerning traveler.</p>
+
+        {/* ── WEATHER WIDGET ── */}
+        <WeatherWidget
+          weather={weather}
+          loading={weatherLoading}
+          error={weatherError}
+          currentTime={currentTime}
+        />
 
         {/* ── SEARCH CARD ── */}
         <div className="sc-card">
@@ -451,7 +531,7 @@ export default function SearchPage({ onSearch }) {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
                 </svg>
-                Search Flights
+                {mode === 'train' ? 'Search Trains' : 'Search Flights'}
               </button>
             </div>
           </div>
@@ -504,6 +584,59 @@ export default function SearchPage({ onSearch }) {
           {toast.type === 'error' ? '⚠' : '✓'} {toast.msg}
         </div>
       )}
+    </div>
+  );
+}
+
+function WeatherWidget({ weather, loading, error, currentTime }) {
+  const timeStr = currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const dateStr = currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  if (error) return null;
+
+  if (loading) {
+    return (
+      <div className="ww-root ww-loading">
+        <div className="skeleton" style={{ width: 130, height: 18 }} />
+        <div className="skeleton" style={{ width: 80, height: 36, marginTop: 8 }} />
+        <div className="skeleton" style={{ width: 190, height: 13, marginTop: 8 }} />
+      </div>
+    );
+  }
+
+  const { city, country, temp, humidity, wind, code } = weather;
+  const { label, emoji } = getWMO(code);
+
+  return (
+    <div className="ww-root">
+      <div className="ww-left">
+        <div className="ww-city">{city}{country ? `, ${country}` : ''}</div>
+        <div className="ww-time">{timeStr}</div>
+        <div className="ww-date">{dateStr}</div>
+      </div>
+      <div className="ww-sep" />
+      <div className="ww-center">
+        <div className="ww-emoji">{emoji}</div>
+        <div className="ww-temp">{temp}<span className="ww-unit">°F</span></div>
+        <div className="ww-condition">{label}</div>
+      </div>
+      <div className="ww-sep" />
+      <div className="ww-right">
+        <div className="ww-stat">
+          <span className="ww-stat-icon">💧</span>
+          <div className="ww-stat-body">
+            <span className="ww-stat-label">Humidity</span>
+            <span className="ww-stat-val">{humidity}%</span>
+          </div>
+        </div>
+        <div className="ww-stat">
+          <span className="ww-stat-icon">💨</span>
+          <div className="ww-stat-body">
+            <span className="ww-stat-label">Wind</span>
+            <span className="ww-stat-val">{wind} mph</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
