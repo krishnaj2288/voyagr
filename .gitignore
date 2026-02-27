@@ -1,0 +1,13 @@
+node_modules/
+build/
+.env
+.env.local
+.env.production
+coverage/
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+tfplan
+*.pem
+.DS_Store
