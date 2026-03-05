@@ -2,7 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(npm install)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(git add src/components/ResultsPage.css src/components/ResultsPage.js src/components/SearchPage.css src/components/SearchPage.js)",
+      "Bash(git commit:*)",
+      "Bash(git push origin develop)",
+      "Bash(git add src/components/SearchPage.js src/components/SearchPage.css)",
+      "WebFetch(domain:source.unsplash.com)",
+      "WebFetch(domain:en.wikipedia.org)",
+      "Bash(npm run build)"
     ]
   }
 }
