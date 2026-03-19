@@ -502,6 +502,8 @@ export default function ResultsPage({ params, onBack, onModify, timeLeft }) {
       {bookingStep === 'success' && (
         <SuccessModal
           flight={flights.find(f => f.id === selectedId)}
+          travelerData={travelerData}
+          pax={pax}
           onClose={() => { setBookingStep(null); onBack(); }}
         />
       )}
@@ -701,17 +703,42 @@ function TrainCard({ train, pax, selected, onSelect, onBook, style }) {
   );
 }
 
+const EMAIL_API = 'https://65pbusdigg.execute-api.us-east-1.amazonaws.com/send-confirmation';
+
 /* ── Success Modal ── */
-function SuccessModal({ flight, onClose }) {
+function SuccessModal({ flight, travelerData, onClose }) {
   const [bookingRef] = useState(() => {
-    // Timestamp since 2025-01-01 in base-36 (7-8 chars, unique for 250+ years)
-    // plus 3 random chars to handle same-millisecond collisions
     const EPOCH = 1735689600000; // 2025-01-01T00:00:00Z
     const ts   = (Date.now() - EPOCH).toString(36).toUpperCase().padStart(7, '0');
     const rand = Math.random().toString(36).slice(2, 5).toUpperCase();
     return `VYG-${ts}${rand}`;
   });
+  const [emailStatus, setEmailStatus] = useState('sending'); // sending | sent | error
   const isTrain = flight.type === 'train';
+
+  useEffect(() => {
+    if (!travelerData?.contact?.email) { setEmailStatus('error'); return; }
+    fetch(EMAIL_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bookingRef,
+        flight,
+        contact:    travelerData.contact,
+        passengers: travelerData.passengers,
+        totalPrice: travelerData.total,
+      }),
+    })
+      .then(r => r.ok ? setEmailStatus('sent') : setEmailStatus('error'))
+      .catch(() => setEmailStatus('error'));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const emailNote = {
+    sending: '📧 Sending confirmation email…',
+    sent:    `✅ Confirmation sent to ${travelerData?.contact?.email}`,
+    error:   '⚠️ Could not send email — save your reference above.',
+  }[emailStatus];
+
   return (
     <div className="modal-overlay">
       <div className="modal modal-success">
@@ -719,7 +746,9 @@ function SuccessModal({ flight, onClose }) {
         <h2 className="success-title">Booking Confirmed!</h2>
         <p className="success-sub">Your {isTrain ? `train ${flight.trainNum}` : `flight ${flight.flightNum}`} has been reserved.</p>
         <p className="success-ref">Booking Reference: <strong>{bookingRef}</strong></p>
-        <p className="success-note">A confirmation will be sent to your email.</p>
+        <p className="success-note" style={{ color: emailStatus === 'error' ? '#e53e3e' : emailStatus === 'sent' ? '#38a169' : '#888' }}>
+          {emailNote}
+        </p>
         <button className="modal-confirm" onClick={onClose} style={{ width: '100%', marginTop: 24 }}>
           Back to Search
         </button>
