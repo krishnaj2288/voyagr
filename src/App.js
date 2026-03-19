@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import SearchPage from './components/SearchPage';
 import ResultsPage from './components/ResultsPage';
+import TicketPage from './components/TicketPage';
 import './App.css';
 
 const SESSION_MS = 10 * 60 * 1000; // 10 minutes
@@ -28,6 +29,11 @@ function SessionExpiredModal({ onRestart }) {
 }
 
 export default function App() {
+  if (window.location.hash.startsWith('#ticket/')) return <TicketPage />;
+  return <MainApp />;
+}
+
+function MainApp() {
   const [page, setPage]               = useState('search');
   const [searchParams, setSearchParams] = useState(null);
   const [sessionStart, setSessionStart] = useState(null);
