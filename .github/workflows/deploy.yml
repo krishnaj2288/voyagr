@@ -69,6 +69,8 @@ jobs:
         env:
           CI: false  # Treat warnings as warnings, not errors
           REACT_APP_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+          REACT_APP_AMADEUS_API_KEY: ${{ secrets.REACT_APP_AMADEUS_API_KEY }}
+          REACT_APP_AMADEUS_API_SECRET: ${{ secrets.REACT_APP_AMADEUS_API_SECRET }}
 
       - name: Analyze bundle size
         run: |

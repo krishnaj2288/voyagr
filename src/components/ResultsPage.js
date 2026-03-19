@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { generateFlights, generateTrains, AIRPORTS, STATIONS } from '../data';
+import { generateFlights, AIRPORTS, STATIONS } from '../data';
+import { searchFlights } from '../services/amadeus';
 import TravelerInfoPage from './TravelerInfoPage';
 import './ResultsPage.css';
 
@@ -248,17 +249,37 @@ export default function ResultsPage({ params, onBack, onModify, timeLeft }) {
   const pax = travelers.adults + travelers.children + travelers.infants;
 
   useEffect(() => {
+    let isMounted = true;
     setLoading(true);
-    const t = setTimeout(() => {
-      const results = mode === 'train'
-        ? generateTrains(origin, dest, departDate, cabin, travelers)
-        : generateFlights(origin, dest, departDate, cabin, travelers);
+
+    searchFlights({
+      origin:      origin.code,
+      destination: dest.code,
+      departDate,
+      returnDate,
+      adults:   travelers.adults,
+      children: travelers.children,
+      infants:  travelers.infants,
+      cabin,
+    })
+    .then(results => {
+      if (!isMounted) return;
       setFlights(results);
-      setMaxPrice(Math.max(...results.map(f => f.price)) + 50);
+      setMaxPrice(results.length ? Math.max(...results.map(f => f.price)) + 50 : 2000);
       setLoading(false);
-    }, 1400);
-    return () => clearTimeout(t);
-  }, [origin, dest, departDate, cabin, travelers, mode]);
+    })
+    .catch(err => {
+      if (!isMounted) return;
+      console.error('Amadeus error:', err);
+      // Fall back to mock data if API fails
+      const fallback = generateFlights(origin, dest, departDate, cabin, travelers);
+      setFlights(fallback);
+      setMaxPrice(Math.max(...fallback.map(f => f.price)) + 50);
+      setLoading(false);
+    });
+
+    return () => { isMounted = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatDate = (ts) => {
     if (!ts) return '';

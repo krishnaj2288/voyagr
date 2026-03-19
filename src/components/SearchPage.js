@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AIRPORTS, STATIONS } from '../data';
+import { searchAirports } from '../services/amadeus';
 import './SearchPage.css';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -473,7 +474,8 @@ export default function SearchPage({ onSearch }) {
   const [errors, setErrors] = useState({});
   const [toast, setToast] = useState(null);
   const [destModal, setDestModal] = useState(null);
-  const panelRef = useRef(null);
+  const panelRef    = useRef(null);
+  const acDebounce  = useRef(null);
 
   // ── WEATHER STATE ──
   const [weather, setWeather] = useState(null);
@@ -551,10 +553,11 @@ export default function SearchPage({ onSearch }) {
     setCabin(newMode === 'train' ? 'coach' : 'economy');
     if (newMode === 'train' && tripType === 'multi') setTripType('round');
     setOpenPanel(null);
+    clearTimeout(acDebounce.current);
     setAcResults((newMode === 'train' ? STATIONS : AIRPORTS).slice(0, 8));
   };
 
-  // Autocomplete filter — excludeCode removes the already-selected opposite city
+  // Static filter for trains; live Amadeus search for flights
   const filterAC = (val, excludeCode = null) => {
     const q = val.trim().toLowerCase();
     let results = !q ? source.slice(0, 8) : source.filter(a =>
@@ -567,17 +570,44 @@ export default function SearchPage({ onSearch }) {
     return results;
   };
 
+  const toTitleCase = (s) => s
+    ? s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
+    : '';
+
+  const liveAirportSearch = (val, excludeCode) => {
+    clearTimeout(acDebounce.current);
+    if (!val.trim()) {
+      setAcResults(AIRPORTS.slice(0, 8).filter(a => a.code !== excludeCode));
+      return;
+    }
+    acDebounce.current = setTimeout(() => {
+      searchAirports(val.trim(), 10)
+        .then(locs => {
+          const mapped = locs
+            .filter(l => l.iataCode && l.iataCode !== excludeCode)
+            .map(l => ({
+              code:    l.iataCode,
+              city:    toTitleCase(l.address?.cityName  || l.name),
+              country: toTitleCase(l.address?.countryName),
+              name:    toTitleCase(l.name),
+            }));
+          setAcResults(mapped);
+        })
+        .catch(() => setAcResults(filterAC(val, excludeCode)));
+    }, 300);
+  };
+
   const handleOriginChange = (v) => {
     setOriginInput(v);
-    setAcResults(filterAC(v, dest?.code));
     setOrigin(null);
     setErrors(e => ({...e, origin: null}));
+    mode === 'flight' ? liveAirportSearch(v, dest?.code) : setAcResults(filterAC(v, dest?.code));
   };
   const handleDestChange = (v) => {
     setDestInput(v);
-    setAcResults(filterAC(v, origin?.code));
     setDest(null);
     setErrors(e => ({...e, dest: null}));
+    mode === 'flight' ? liveAirportSearch(v, origin?.code) : setAcResults(filterAC(v, origin?.code));
   };
 
   const selectAirport = (airport, field) => {
