@@ -703,6 +703,14 @@ function TrainCard({ train, pax, selected, onSelect, onBook, style }) {
 
 /* ── Success Modal ── */
 function SuccessModal({ flight, onClose }) {
+  const [bookingRef] = useState(() => {
+    // Timestamp since 2025-01-01 in base-36 (7-8 chars, unique for 250+ years)
+    // plus 3 random chars to handle same-millisecond collisions
+    const EPOCH = 1735689600000; // 2025-01-01T00:00:00Z
+    const ts   = (Date.now() - EPOCH).toString(36).toUpperCase().padStart(7, '0');
+    const rand = Math.random().toString(36).slice(2, 5).toUpperCase();
+    return `VYG-${ts}${rand}`;
+  });
   const isTrain = flight.type === 'train';
   return (
     <div className="modal-overlay">
@@ -710,7 +718,7 @@ function SuccessModal({ flight, onClose }) {
         <div className="success-icon">{isTrain ? '🚂' : '✈'}</div>
         <h2 className="success-title">Booking Confirmed!</h2>
         <p className="success-sub">Your {isTrain ? `train ${flight.trainNum}` : `flight ${flight.flightNum}`} has been reserved.</p>
-        <p className="success-ref">Booking Reference: <strong>VYG-{Math.random().toString(36).slice(2,8).toUpperCase()}</strong></p>
+        <p className="success-ref">Booking Reference: <strong>{bookingRef}</strong></p>
         <p className="success-note">A confirmation will be sent to your email.</p>
         <button className="modal-confirm" onClick={onClose} style={{ width: '100%', marginTop: 24 }}>
           Back to Search
